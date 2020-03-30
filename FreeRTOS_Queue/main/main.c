@@ -66,7 +66,11 @@ void app_main(void)
         TIMERG0.wdt_wprotect - 0;
     }
 }
-
+/*
+ * @brief Task 1 function
+ *
+ *  Send the counter value to queue
+ */
 void vTask1(void *pvParams){
 	int cnt = 0;
 	BaseType_t xResult;
@@ -87,6 +91,11 @@ void vTask1(void *pvParams){
 	vTaskDelete(NULL);
 }
 
+/*
+ * @breif Task 2 function
+ *
+ * Send the counter value to the front of queue
+ */
 void vTask2(void *pvParams){
 	int cnt = 9999;
 	while(true){
@@ -102,7 +111,11 @@ void vTask2(void *pvParams){
 	}
 	vTaskDelete(NULL);
 }
-
+/*
+ * @brief Task 3 function
+ *
+ * Receieve all value from queue
+ */
 void vTask3(void *pvParams){
 	int buffer;
 	uint8_t queueCnt = 0;
