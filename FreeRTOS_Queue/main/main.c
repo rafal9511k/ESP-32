@@ -1,10 +1,26 @@
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_event.h"
 #include "esp_event_loop.h"
+#include "esp_log.h"
+#include "soc/timer_group_struct.h"
+#include "soc/timer_group_reg.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
+
+#include "print.h"
+
+
+void vTask1(void *pvParams);
+void vTask2(void *pvParams);
+void vTask3(void *pvParams);
+
+QueueHandle_t xQueue;
 
 esp_err_t event_handler(void *ctx, system_event_t *event)
 {
@@ -14,29 +30,90 @@ esp_err_t event_handler(void *ctx, system_event_t *event)
 void app_main(void)
 {
     nvs_flash_init();
-    tcpip_adapter_init();
-    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
-    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
-    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-    wifi_config_t sta_config = {
-        .sta = {
-            .ssid = CONFIG_ESP_WIFI_SSID,
-            .password = CONFIG_ESP_WIFI_PASSWORD,
-            .bssid_set = false
-        }
-    };
-    ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &sta_config) );
-    ESP_ERROR_CHECK( esp_wifi_start() );
-    ESP_ERROR_CHECK( esp_wifi_connect() );
 
-    gpio_set_direction(GPIO_NUM_4, GPIO_MODE_OUTPUT);
-    int level = 0;
-    while (true) {
-        gpio_set_level(GPIO_NUM_4, level);
-        level = !level;
-        vTaskDelay(300 / portTICK_PERIOD_MS);
+    xQueue = xQueueCreate(10, sizeof(int));
+    if(xQueue == NULL){
+    	ESP_LOGE("RTOS", "Queue was not created");
+    }
+    ESP_LOGI("RTOS", "Queue was created");
+
+    xTaskCreate(
+    		vTask1,
+			"Task 1",
+			4*4096,
+			NULL,
+			2,
+			NULL);
+
+    xTaskCreate(
+    		vTask2,
+			"Task 2",
+			4096,
+			NULL,
+			2,
+			NULL);
+
+    xTaskCreate(
+    		vTask3,
+			"Task 3",
+			4096,
+			NULL,
+			3,
+			NULL);
+    while(true){
+        TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
+        TIMERG0.wdt_feed = 1;
+        TIMERG0.wdt_wprotect - 0;
     }
 }
 
+void vTask1(void *pvParams){
+	int cnt = 0;
+	BaseType_t xResult;
+	while(true){
+
+
+		printCF(COLOR_CYAN, "cnt = %d", cnt);
+		if(xQueueSend(xQueue, &cnt, 0) != pdPASS){
+			printCF(COLOR_CYAN, "Queue is full");
+			cnt -= 2;
+		}else{
+			printCF(COLOR_CYAN, "Element added to Queue");
+			cnt += 2;
+		}
+		//printCF(COLOR_CYAN, "xQueueSend = %d", xResult);
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+	}
+	vTaskDelete(NULL);
+}
+
+void vTask2(void *pvParams){
+	int cnt = 9999;
+	while(true){
+		printCF(COLOR_MAGENTA, "cnt = %d", cnt);
+		if(xQueueSendToFront(xQueue, &cnt, 0) != pdPASS){
+			printCF(COLOR_MAGENTA, "Queue is full");
+			cnt++;
+		}else{
+			printCF(COLOR_MAGENTA, "Element added on the front of Queue");
+			cnt--;
+		}
+		vTaskDelay(3000 / portTICK_PERIOD_MS);
+	}
+	vTaskDelete(NULL);
+}
+
+void vTask3(void *pvParams){
+	int buffer;
+	uint8_t queueCnt = 0;
+	while(true){
+		while(xQueueReceive(xQueue, &buffer, 100 / portTICK_RATE_MS) == pdPASS){
+			printCF(COLOR_RED, "No. %d  value = %d", queueCnt, buffer);
+			queueCnt++;
+		}
+		printCF(COLOR_RED, "No more elements in Queue");
+		queueCnt = 0;
+		vTaskDelay(10000 / portTICK_PERIOD_MS);
+	}
+	vTaskDelete(NULL);
+}
