@@ -40,7 +40,7 @@ void app_main(void)
     xTaskCreate(
     		vTask1,
 			"Task 1",
-			4*4096,
+			4096,
 			NULL,
 			2,
 			NULL);
@@ -75,15 +75,17 @@ void vTask1(void *pvParams){
 	int cnt = 0;
 	BaseType_t xResult;
 	while(true){
-
-
 		printCF(COLOR_CYAN, "cnt = %d", cnt);
-		if(xQueueSend(xQueue, &cnt, 0) != pdPASS){
-			printCF(COLOR_CYAN, "Queue is full");
-			cnt -= 2;
+		if(xQueue != NULL){
+			if(xQueueSend(xQueue, &cnt, 0) != pdPASS){
+				printCF(COLOR_CYAN, "Queue is full");
+				cnt -= 2;
+			}else{
+				printCF(COLOR_CYAN, "Element added to Queue");
+				cnt += 2;
+			}
 		}else{
-			printCF(COLOR_CYAN, "Element added to Queue");
-			cnt += 2;
+			printCF(COLOR_CYAN, "Queue is NULL");
 		}
 		//printCF(COLOR_CYAN, "xQueueSend = %d", xResult);
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -100,12 +102,16 @@ void vTask2(void *pvParams){
 	int cnt = 9999;
 	while(true){
 		printCF(COLOR_MAGENTA, "cnt = %d", cnt);
-		if(xQueueSendToFront(xQueue, &cnt, 0) != pdPASS){
-			printCF(COLOR_MAGENTA, "Queue is full");
-			cnt++;
+		if(xQueue != NULL){
+			if(xQueueSendToFront(xQueue, &cnt, 0) != pdPASS){
+				printCF(COLOR_MAGENTA, "Queue is full");
+				cnt++;
+			}else{
+				printCF(COLOR_MAGENTA, "Element added at the front of Queue");
+				cnt--;
+			}
 		}else{
-			printCF(COLOR_MAGENTA, "Element added on the front of Queue");
-			cnt--;
+			printCF(COLOR_MAGENTA, "Queue is NULL");
 		}
 		vTaskDelay(3000 / portTICK_PERIOD_MS);
 	}
@@ -120,12 +126,16 @@ void vTask3(void *pvParams){
 	int buffer;
 	uint8_t queueCnt = 0;
 	while(true){
-		while(xQueueReceive(xQueue, &buffer, 100 / portTICK_RATE_MS) == pdPASS){
-			printCF(COLOR_RED, "No. %d  value = %d", queueCnt, buffer);
-			queueCnt++;
+		if(xQueue != NULL){
+			while(xQueueReceive(xQueue, &buffer, 100 / portTICK_RATE_MS) == pdPASS){
+				printCF(COLOR_RED, "No. %d  value = %d", queueCnt, buffer);
+				queueCnt++;
+			}
+			printCF(COLOR_RED, "No more elements in Queue");
+			queueCnt = 0;
+		}else{
+			printCF(COLOR_RED, "Queue is NULL");
 		}
-		printCF(COLOR_RED, "No more elements in Queue");
-		queueCnt = 0;
 		vTaskDelay(10000 / portTICK_PERIOD_MS);
 	}
 	vTaskDelete(NULL);
