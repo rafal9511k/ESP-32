@@ -9,10 +9,14 @@
 
 #include "print.h"
 
-#define AP_SSID		"esp32_AP"
+#define AP_SSID		"esp32_AP_1"
 #define AP_PASS		"qwerty12345"
+#define STA_SSID	"esp32_AP"
+#define STA_PASS	"qwerty12345"
+
 
 void vWifiTask(void* pvParams);
+
 /**
  * @brief Wifi event handler
  *
@@ -22,9 +26,13 @@ void vWifiTask(void* pvParams);
  * @param event_data
  */
 void wifi_event_handler(
-		void* arg, esp_event_base_t base_event,
-		wifi_event_t event_id, void* event_data){
+			void* arg, esp_event_base_t base_event,
+			wifi_event_t event_id, void* event_data){
+
 	switch(event_id){
+	case WIFI_EVENT_STA_START:
+		printCF(COLOR_BLUE, "Station started");
+		break;
 	case WIFI_EVENT_AP_START:
 		printCF(COLOR_BLUE, "Access point started");
 		break;
@@ -54,43 +62,47 @@ void wifi_event_handler(
 		printCF(COLOR_BLUE, "Wifi event id = %d", event_id);
 
 	}
-
 }
-
 
 void app_main(void)
 {
-    ESP_ERROR_CHECK(nvs_flash_init());
+	ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());z
 
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_default_wifi_ap());
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-
-    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
-
+    ESP_ERROR_CHECK( esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_event_handler_register(
     		WIFI_EVENT,
 			ESP_EVENT_ANY_ID,
 			(esp_event_handler_t)wifi_event_handler,
 			NULL));
-    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_APSTA));
 
-    wifi_config_t ap_config = {
-    		.ap = {
-    				.ssid = AP_SSID,
-					.ssid_len = strlen(AP_SSID),
-					.password = AP_PASS,
-					.channel = 1,
-					.max_connection = 1,
-					.authmode = WIFI_AUTH_WPA_WPA2_PSK
-    		}
+    wifi_config_t sta_config = {
+        .sta = {
+            .ssid = STA_SSID,
+            .password = STA_PASS,
+            .bssid_set = false
+        }
     };
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
+    wifi_config_t ap_config = {
+    	.ap = {
+			.ssid = AP_SSID,
+			.ssid_len = strlen(AP_SSID),
+			.password = AP_PASS,
+			.channel = 1,
+			.max_connection = 3,
+			.authmode = WIFI_AUTH_WPA_WPA2_PSK
+    	}
+    };
 
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_connect());
 
     xTaskCreate(
     		vWifiTask,
@@ -99,8 +111,6 @@ void app_main(void)
 			NULL,
 			5,
 			NULL);
-    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
-
     while (true) {
 
     }
@@ -135,3 +145,4 @@ void vWifiTask(void* pvParams){
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
 }
+
