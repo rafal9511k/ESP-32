@@ -7,15 +7,18 @@
 #include "driver/gpio.h"
 #include "string.h"
 #include "esp_netif.h"
+#include "esp_log.h"
 
 #include "d2d.h"
 #include "print.h"
 
 #define AP_SSID		"esp32_AP_1"
 #define AP_PASS		"qwerty12345"
-#define STA_SSID	"AP_123456789"
+#define STA_SSID	"FunBox2-3EED"
 #define STA_PASS	"asdfghjkl"
 
+esp_netif_t* sta_netif;
+esp_netif_t* ap_netif;
 
 void vWifiTask(void* pvParams);
 
@@ -69,11 +72,12 @@ void wifi_event_handler(
 void app_main(void)
 {
 	ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
+	ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_default_wifi_ap());
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_default_wifi_sta());
-
+    ESP_ERROR_CHECK_WITHOUT_ABORT(ap_netif = esp_netif_create_default_wifi_ap());
+    ESP_ERROR_CHECK_WITHOUT_ABORT(sta_netif = esp_netif_create_default_wifi_sta());
+    printCF(COLOR_RED, "debug ap_netif = 0x%x", (uint32_t)(ap_netif));
+    printCF(COLOR_RED, "debug sta_netif = 0x%x", (uint32_t)(sta_netif));
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_event_handler_register(
@@ -83,7 +87,7 @@ void app_main(void)
 			NULL));
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_APSTA));
-
+    printCF(COLOR_RED, "debug");
     wifi_config_t sta_config = {
         .sta = {
             .ssid = STA_SSID,
@@ -107,7 +111,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_connect());
-
+    printCF(COLOR_RED, "debug");
     xTaskCreate(
     		vWifiTask,
 			"Wifi Task",
@@ -124,15 +128,22 @@ void app_main(void)
 }
 
 /**
- * @brief Prints MAC and IP address of connected devices
+ * @brief Print MAC and IP address
  *
  * @param pvParams
+ *
+ *
+ * Print MAC and IP address of connected devices to STA and print
+ * IP address, SSID of AP which is connected
+ *
  */
 void vWifiTask(void* pvParams){
 	wifi_sta_list_t wifi_sta;
+	esp_netif_ip_info_t sta_ip_info;
 	esp_netif_sta_list_t netif_sta;
 	esp_netif_sta_info_t netif_info;
 	while(true){
+		/* STA info */
 		if(esp_wifi_ap_get_sta_list(&wifi_sta) != ESP_OK){
 			printCF(COLOR_CYAN, "Get STA list error");
 		}else{
@@ -149,7 +160,13 @@ void vWifiTask(void* pvParams){
 					ip4addr_ntoa(&netif_info.ip));
 			}
 		}
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		if(esp_netif_get_ip_info(sta_netif, &sta_ip_info) != ESP_OK){
+			printCF(COLOR_CYAN, "Get STA ip info error");
+		}else{
+
+			printCF(COLOR_CYAN, "STA ip address : %s", ip4addr_ntoa(&sta_ip_info.ip));
+		}
+		vTaskDelay(10000 / portTICK_PERIOD_MS);
 	}
 }
 
