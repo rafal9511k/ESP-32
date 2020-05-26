@@ -8,6 +8,8 @@
 #include "string.h"
 #include "esp_netif.h"
 #include "esp_log.h"
+#include "soc/timer_group_struct.h"
+#include "soc/timer_group_reg.h"
 
 #include "d2d.h"
 #include "print.h"
@@ -21,6 +23,7 @@ esp_netif_t* sta_netif;
 esp_netif_t* ap_netif;
 
 void vWifiTask(void* pvParams);
+void vD2dClientTestTask(void *pvParams);
 
 /**
  * @brief Wifi event handler
@@ -30,6 +33,7 @@ void vWifiTask(void* pvParams);
  * @param event_id
  * @param event_data
  */
+/*
 void wifi_event_handler(
 			void* arg, esp_event_base_t base_event,
 			wifi_event_t event_id, void* event_data){
@@ -68,10 +72,11 @@ void wifi_event_handler(
 
 	}
 }
-
+*/
 void app_main(void)
 {
 	ESP_ERROR_CHECK(nvs_flash_init());
+	/*
 	ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK_WITHOUT_ABORT(ap_netif = esp_netif_create_default_wifi_ap());
@@ -111,7 +116,11 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_connect());
+*/
     printCF(COLOR_RED, "debug");
+
+    ESP_ERROR_CHECK(d2d_testInitalize());
+
     xTaskCreate(
     		vWifiTask,
 			"Wifi Task",
@@ -120,10 +129,20 @@ void app_main(void)
 			5,
 			NULL);
 
-    ESP_ERROR_CHECK(d2d_testInitalize());
+    xTaskCreate(
+    		vD2dClientTestTask,
+			"D2D Client Task",
+			4096,
+			NULL,
+			5,
+			NULL);
+
+
 
     while (true) {
-
+        TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
+        TIMERG0.wdt_feed = 1;
+        TIMERG0.wdt_wprotect - 0;
     }
 }
 
@@ -166,6 +185,26 @@ void vWifiTask(void* pvParams){
 
 			printCF(COLOR_CYAN, "STA ip address : %s", ip4addr_ntoa(&sta_ip_info.ip));
 		}
+		vTaskDelay(10000 / portTICK_PERIOD_MS);
+	}
+}
+
+/**
+ * @brief D2D protocol client test task
+ * @param pvParams
+ */
+void vD2dClientTestTask(void *pvParams){
+	esp_ip4_addr_t ip;
+	d2d_frame_t frame;
+	ip.addr = ipaddr_addr("192.168.4.2");
+	//ip4addr_aton("192.168.1.36", &ip);
+	vTaskDelay(10000 / portTICK_PERIOD_MS);
+	while(1){
+		frame.id.id++;
+		printCF(COLOR_GREEN , "Client send");
+		int err = d2d_clientSend(ip, &frame);
+		printCF(COLOR_GREEN , "return value = %d", err);
+		d2d_clientReceive(&frame, 1000 / portTICK_PERIOD_MS);
 		vTaskDelay(10000 / portTICK_PERIOD_MS);
 	}
 }

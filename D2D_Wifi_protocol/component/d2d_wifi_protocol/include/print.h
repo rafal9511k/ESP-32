@@ -19,6 +19,8 @@
 #define COLOR_MAGENTA	"35"
 #define COLOR_CYAN		"36"
 
+#define Print_enable 0
+
 // Print text in color
 #define printC(COLOR, text, ...) printf("\033[0;" COLOR "m" text "\033[0m\n", ##__VA_ARGS__)
 
