@@ -217,7 +217,10 @@ d2d_err_t d2d_WifiInitSta(bool isRoot){
 d2d_err_t d2d_WifiInitAp(void){
 	return D2D_OK;
 }
-
+/**
+ *
+ * @return
+ */
 d2d_err_t d2d_WifiInit(void){
 	xWifiEvent = xEventGroupCreate();
 	ESP_ERROR_CHECK(esp_netif_init());
