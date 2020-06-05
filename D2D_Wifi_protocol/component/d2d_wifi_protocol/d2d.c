@@ -11,7 +11,7 @@
 #include "d2d_socket.h"
 #include "d2d_type.h"
 #include "d2d.h"
-#include  "d2d_log.h"
+#include "d2d_log.h"
 #include "print.h"
 
 
@@ -95,7 +95,7 @@ d2d_err_t d2d_clientSend(esp_ip4_addr_t ip, d2d_frame_t* frame){
  * @brief Client receive frame
  *
  * @param frame		Received frame
- * @param timeout	Wainting time
+ * @param timeout	Waiting time
  * @return
  */
 esp_err_t d2d_clientReceive(d2d_frame_t* frame, TickType_t timeout){
@@ -150,9 +150,18 @@ void v_d2d_testClientSocketTask(void* args){
 esp_err_t d2d_testInitalize(void){
 	D2D_LOG("Gasgas", "sajbfuw");
 	d2d_WifiInit();
-	d2d_WifiConnectToAp();
-	d2d_socketInitalize();
+	uint8_t level;
+	//d2d_WifiConnectToAp(&level);
+//	d2d_socketInitalize();
 	printCF(COLOR_RED, "debug");
+	xTaskCreate(
+			task_d2d_wifi,
+			"D2D Wifi Task",
+			4096,
+			NULL,
+			configMAX_PRIORITIES,
+			NULL);
+	/*
 	xTaskCreate(
 			v_d2d_testServerSocketTask,
 			"D2D Socket Server Task",
@@ -176,6 +185,7 @@ esp_err_t d2d_testInitalize(void){
 			NULL,
 			5,
 			NULL);
+	*/
 	return ESP_OK;
 }
 

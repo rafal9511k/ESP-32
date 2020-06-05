@@ -128,7 +128,7 @@ void app_main(void)
 			NULL,
 			5,
 			NULL);
-
+/*
     xTaskCreate(
     		vD2dClientTestTask,
 			"D2D Client Task",
@@ -136,7 +136,7 @@ void app_main(void)
 			NULL,
 			5,
 			NULL);
-
+*/
 
 
     while (true) {

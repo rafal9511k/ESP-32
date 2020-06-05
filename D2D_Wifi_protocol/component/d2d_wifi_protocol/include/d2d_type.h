@@ -16,6 +16,9 @@
 #define	D2D_INVALID_IP		3
 #define D2D_NOT_READY		4
 
+#define D2D_WIFI_NO_AP		101
+
+
 typedef int32_t d2d_err_t;
 
 typedef struct{
